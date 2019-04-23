@@ -183,6 +183,11 @@ namespace ApiDoctor.Validation
             {
                 Console.WriteLine("Warning: Required YAML headers have not been set.");
             }
+
+            foreach (var config in SchemaConfig.TreatErrorsAsWarningsWorkloads)
+            {
+                Console.WriteLine($"Treating Errors as Warnings for : {config}");
+            }
         }
 
         private void LoadTableParser()

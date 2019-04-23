@@ -23,6 +23,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using System.Collections.Generic;
 using Newtonsoft.Json;
 
 namespace ApiDoctor.Validation.OData.Transformation
@@ -43,6 +44,7 @@ namespace ApiDoctor.Validation.OData.Transformation
         public SchemaConfig()
         {
             this.RequiredYamlHeaders = new string[] {};
+            TreatErrorsAsWarningsWorkloads = new List<string>();
         }
 
         /// <summary>
@@ -74,6 +76,11 @@ namespace ApiDoctor.Validation.OData.Transformation
         /// </summary>
         [JsonProperty("requiredYamlHeaders")]
         public string[] RequiredYamlHeaders { get; set; }
+
+        /// optionally specify workloads whose errors should be treated as warnings
+        /// </summary>
+        [JsonProperty("treatErrorsAsWarningsWorkloads")]
+        public List<string> TreatErrorsAsWarningsWorkloads { get; set; }
     }
 
     public class SchemaDiffConfig

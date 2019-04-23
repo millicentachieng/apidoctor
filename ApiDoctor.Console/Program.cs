@@ -231,7 +231,7 @@ namespace ApiDoctor.ConsoleApp
             if (returnSuccess)
             {
                 if (issues.Errors.Any() ||
-                    (issues.Warnings.Any() && !options.IgnoreErrors))
+                    (issues.Warnings.Any() && !options.IgnoreErrors && !options.IgnoreWarnings))
                 {
                     returnSuccess = false;
                 }
@@ -257,10 +257,10 @@ namespace ApiDoctor.ConsoleApp
             var checkLinksResult = await CheckLinksAsync(options, issues, docset);
             var checkDocsResults = await CheckDocsAsync(options, issues, docset);
 
-            var publishOptions = new PublishMetadataOptions();
-            var publishResult = await PublishMetadataAsync(publishOptions, issues, docset);
+            //var publishOptions = new PublishMetadataOptions();
+            //var publishResult = await PublishMetadataAsync(publishOptions, issues, docset);
 
-            return checkLinksResult && checkDocsResults && publishResult;
+            return checkLinksResult && checkDocsResults;
         }
 
         private static void PrintAboutMessage()
