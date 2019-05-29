@@ -216,6 +216,9 @@ namespace ApiDoctor.ConsoleApp
                 case CommandLineOptions.VerbFix:
                     returnSuccess = await FixDocsAsync((FixDocsOptions)options, issues);
                     break;
+                case CommandLineOptions.VerbFixYamlMetadata:
+                    returnSuccess = await FixYamlMetadataAsync((DocSetOptions)options, issues);
+                    break;
                 case CommandLineOptions.VerbAbout:
                     PrintAboutMessage();
                     Exit(failure: false);
@@ -1539,7 +1542,7 @@ namespace ApiDoctor.ConsoleApp
             var edmx = publisher.CreateEntityFrameworkFromDocs(docSetIssues);
 
             Console.SetOut(originalOut);
-            Console.WriteLine("checking for issues...");
+            Console.WriteLine("Checking for issues...");
             foreach (var inputSchema in inputSchemas)
             {
                 var docSchema = edmx.DataServices?.Schemas?.FirstOrDefault(s => s.Namespace == inputSchema.Namespace);
@@ -1910,6 +1913,34 @@ namespace ApiDoctor.ConsoleApp
 
             DocumentationGenerator docGenerator = new DocumentationGenerator(options.ResourceTemplateFile);
             docGenerator.GenerateDocumentationFromEntityFrameworkAsync(ef, options.DocumentationSetPath);
+
+            return true;
+        }
+
+        private static async Task<bool> FixYamlMetadataAsync(DocSetOptions options, IssueLogger issues, DocSet docs = null)
+        {
+            const string testName = "Fix-Yaml-Metadata";
+            var docSet = docs ?? await GetDocSetAsync(options, issues);
+
+            if (null == docSet)
+                return false;
+
+            var requiredHeaders = DocSet.SchemaConfig.RequiredYamlHeaders;
+            if (!requiredHeaders.Any())
+            {
+                return false;
+            }
+
+            string tagsToInclude;
+            if (null == options.PageParameterDict || !options.PageParameterDict.TryGetValue("tags", out tagsToInclude))
+            {
+                tagsToInclude = String.Empty;
+            }
+
+            foreach (var doc in docSet.Files)
+            {
+                doc.AddMissingYamlHeaders(tagsToInclude, issues);
+            }
 
             return true;
         }

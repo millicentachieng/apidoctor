@@ -46,7 +46,7 @@ namespace ApiDoctor.Validation
         {
         }
 
-        protected override string GetContentsOfFile(string tags)
+        public override string GetContentsOfFile(string tags)
         {
             return File.ReadAllText(Path.Combine(this.FullPath));
         }

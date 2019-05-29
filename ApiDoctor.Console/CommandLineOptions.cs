@@ -48,7 +48,7 @@ namespace ApiDoctor.ConsoleApp
         public const string VerbAbout = "about";
         public const string VerbCheckAll = "check-all";
         public const string VerbPublishMetadata = "publish-edmx";
-
+        public const string VerbFixYamlMetadata = "fix-yaml-metadata";
         public const string VerbGenerateDocs = "generate-docs";
 
         [VerbOption(VerbPrint, HelpText = "Print files, resources, and methods discovered in the documentation.")]
@@ -83,6 +83,9 @@ namespace ApiDoctor.ConsoleApp
 
         [VerbOption(VerbAbout, HelpText = "Print about information for this application.")]
         public BaseOptions AboutVerb { get; set; }
+
+        [VerbOption(VerbFixYamlMetadata, HelpText = "Add missing required YAML metadata to docs")]
+        public DocSetOptions FixYamlMetadataVerb { get; set; }
 
         [HelpVerbOption]
         public string GetUsage(string verb)
@@ -274,7 +277,7 @@ namespace ApiDoctor.ConsoleApp
         [Option("git-path", HelpText="Path to the git executable. Required for changes-since-branch-only.")]
         public string GitExecutablePath { get; set; }
 
-        [Option("link-case-match", HelpText = "Require the CaSe of relative links within the content to match the filenames.")]
+        [Option("link-case-match", HelpText = "Require the Case of relative links within the content to match the filenames.")]
         public bool RequireFilenameCaseMatch { get; set; }
     }
 

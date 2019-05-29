@@ -29,6 +29,7 @@ namespace ApiDoctor.Validation
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.IO;
+    using System.Text;
     using System.Linq;
     using ApiDoctor.Validation.Error;
     using ApiDoctor.Validation.TableSpec;
@@ -185,11 +186,12 @@ namespace ApiDoctor.Validation
             return tagProcessor.PostProcess(inputHtml, fileInfo, null);
         }
 
-        protected virtual string GetContentsOfFile(string tags)
+        public virtual string GetContentsOfFile(string tags)
         {
             // Preprocess file content
             FileInfo docFile = new FileInfo(this.FullPath);
             TagProcessor tagProcessor = new TagProcessor(tags, Parent.SourceFolderPath);
+            //docFile.AppendText();
             return tagProcessor.Preprocess(docFile);
         }
 
@@ -1513,6 +1515,140 @@ namespace ApiDoctor.Validation
         }
 
         #endregion
+
+        public bool AddMissingYamlHeaders(string tags, IssueLogger issues)
+        {
+            var requiredYamlHeaders = DocSet.SchemaConfig.RequiredYamlHeaders;
+            if (!requiredYamlHeaders.Any())
+            {
+                return false;
+            }
+
+            string fileContents = this.GetContentsOfFile(tags);
+            const string YamlFrontMatterHeader = "---";
+            using (StringReader reader = new StringReader(fileContents))
+            {
+                string currentLine = reader.ReadLine();
+                int lineNumber = 0;
+                StringBuilder frontMatter = new StringBuilder();
+                YamlFrontMatterDetectionState currentState = YamlFrontMatterDetectionState.NotDetected;
+                while (currentLine != null && currentState != YamlFrontMatterDetectionState.SecondTokenFound)
+                {
+                    string trimmedCurrentLine = currentLine.Trim();
+                    switch (currentState)
+                    {
+                        case YamlFrontMatterDetectionState.NotDetected:
+                            if (!string.IsNullOrWhiteSpace(trimmedCurrentLine) && trimmedCurrentLine != YamlFrontMatterHeader)
+                            {
+                                // This file doesn't have YAML front matter, so we add all the required YAML headers
+                                return true;
+                            }
+                            else if (trimmedCurrentLine == YamlFrontMatterHeader)
+                            {
+                                currentState = YamlFrontMatterDetectionState.FirstTokenFound;
+                            }
+                            break;
+                        case YamlFrontMatterDetectionState.FirstTokenFound:
+                            if (trimmedCurrentLine == YamlFrontMatterHeader)
+                            {
+                                // Found the end of the YAML front matter, so move to the final state
+                                currentState = YamlFrontMatterDetectionState.SecondTokenFound;
+                            }
+                            else
+                            {
+                                // Store the YAML data into our header
+                                frontMatter.AppendLine(currentLine);
+                            }
+                            break;
+
+                        case YamlFrontMatterDetectionState.SecondTokenFound:
+                            break;
+                    }
+
+                    if (currentState != YamlFrontMatterDetectionState.SecondTokenFound)
+                    {
+                        currentLine = reader.ReadLine();
+                    }
+                    lineNumber++;
+                }
+
+                if (currentState == YamlFrontMatterDetectionState.SecondTokenFound)
+                {
+                    // Find missing YAML headers and insert into docs
+                    Dictionary<string, string> dictionary = new Dictionary<string, string>();
+                    string[] items = frontMatter.ToString().Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (string item in items)
+                    {
+                        string[] keyValue = item.Split(':');
+                        var y = "";
+                        if (keyValue.Count() > 1)
+                            y = keyValue[1];
+                        else
+                            Console.WriteLine($"{this.DisplayName} - {keyValue[0]} has no value");
+                        if (!dictionary.ContainsKey(keyValue[0]))
+                            dictionary.Add(keyValue[0].Trim(), y.Trim());
+                        else
+                            Console.WriteLine($"{this.DisplayName} has duplicate headers");
+                    }
+
+                    List<string> missingHeaders = new List<string>();
+                    foreach (var header in requiredYamlHeaders)
+                    {
+                        string value;
+                        if (!dictionary.TryGetValue(header, out value))
+                        {
+                            missingHeaders.Add(header);
+                        }
+                    }
+
+                    StringBuilder headersToInsert = new StringBuilder();
+                    foreach (var header in missingHeaders)
+                    {
+                        if (header == "author")
+                        {
+                            headersToInsert.AppendLine("author: \"\"");
+                        }
+                        else if(header == "doc_type")
+                        {
+                            if (dictionary.ContainsKey("title"))
+                            {
+                                string title = dictionary["title"];
+                                if (title.Contains("resource type"))
+                                {
+                                    headersToInsert.AppendLine($"{header}: resourcePageType");
+                                }
+                                else if (title.Contains("enum type"))
+                                {
+                                    headersToInsert.AppendLine($"{header}: enumPageType");
+                                }
+                                else if (this.DisplayName.Contains("\\api\\"))
+                                {
+                                    headersToInsert.AppendLine($"{header}: apiPageType");
+                                }
+                                else if(title.Contains("conceptual"))
+                                {
+                                    headersToInsert.AppendLine($"{header}: conceptualPageType");
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"{this.DisplayName} has no doc_type");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            headersToInsert.AppendLine($"{header}: <{header}>");
+                        }
+                    }
+                    headersToInsert.Append("---");
+                    string[] arrLine = File.ReadAllLines(this.FullPath);
+                    arrLine[lineNumber - 1] = headersToInsert.ToString();
+                    File.WriteAllLines(this.FullPath, arrLine);
+                }
+            }
+
+            return true;
+        }
 
         public string UrlRelativePathFromRoot()
         {
